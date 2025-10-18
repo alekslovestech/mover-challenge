@@ -1,0 +1,33 @@
+{
+  "name": "route-optimization-app",
+  "version": "1.0.0",
+  "description": "Full-stack route optimization application with .NET backend and React frontend",
+  "scripts": {
+    "start": "concurrently \"yarn run start:backend\" \"yarn run start:frontend\"",
+    "start:backend": "cd backend/RouteOptimization.Api && dotnet run",
+    "start:frontend": "cd frontend && yarn start",
+    "install:all": "yarn run install:frontend && yarn run install:backend",
+    "install:frontend": "cd frontend && yarn install",
+    "install:backend": "cd backend/RouteOptimization.Api && dotnet restore",
+    "build": "yarn run build:frontend && yarn run build:backend",
+    "build:frontend": "cd frontend && yarn build",
+    "build:backend": "cd backend/RouteOptimization.Api && dotnet build",
+    "clean": "yarn run clean:frontend && yarn run clean:backend",
+    "clean:frontend": "cd frontend && rmdir /s /q node_modules 2>nul || echo Frontend cleaned",
+    "clean:backend": "cd backend/RouteOptimization.Api && dotnet clean",
+    "dev": "yarn start",
+    "setup": "yarn run install:all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "route-optimization",
+    "google-maps",
+    "react",
+    "dotnet",
+    "fullstack"
+  ],
+  "author": "",
+  "license": "MIT"
+}

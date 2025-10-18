@@ -1,0 +1,19 @@
+.App {
+  text-align: left;
+}
+
+.App-header {
+  background-color: #282c34;
+  padding: 20px;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .container > div[style*="grid"] {
+    grid-template-columns: 1fr !important;
+  }
+}
