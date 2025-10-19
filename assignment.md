@@ -14,35 +14,38 @@ The prototype should support the following functionalities/commands:
 
 ### The backend requirements
 
-#### API Integration:
+1. API Integration:
 
-Utilize the Google Routes Directions API to calculate routes.
-Fetch the distance and time between multiple delivery points.
+- Utilize the Google Routes Directions API to calculate routes.
+- Fetch the distance and time between multiple delivery points.
 
-#### Route Optimization:
+2. Route Optimization:
 
-Implement an algorithm to find the optimal route. You can use a heuristic approach like the Nearest Neighbor Algorithm for simplicity.
-Consider how the algorithm scales with the number of routes and delivery points.
+- Implement an algorithm to find the optimal route. You can use a heuristic approach like the Nearest Neighbor Algorithm for simplicity.
+- Consider how the algorithm scales with the number of routes and delivery points.
 
-#### Data Handling:
+3. Data Handling:
 
-Allow input for a list of delivery addresses.
-Error handling
-Be thoughtful of how you handle errors in the application.
+- Allow input for a list of delivery addresses.
+
+4. Error handling
+
+- Be thoughtful of how you handle errors in the application.
 
 ### The frontend Requirements
 
-#### User Interface:
+1. User Interface:
 
-Create a simple, user-friendly form for inputting delivery addresses. Ok
-Display the optimized route on a map using Google Maps.
-Show the total distance and estimated time for the route.
+- Create a simple, user-friendly form for inputting delivery addresses. Ok
+- Display the optimized route on a map using Google Maps.
+- Show the total distance and estimated time for the route.
 
-#### Visualization:
+2. Visualization:
 
-Display the sequence of delivery points on the map.
-Highlight the optimal route visually.
-Resources:
+- Display the sequence of delivery points on the map.
+- Highlight the optimal route visually.
+
+### Resources:
 
 - Google Routes API Documentation: [Google Routes API](https://developers.google.com/maps/documentation/routes)
 - React Google Maps Libraries:
