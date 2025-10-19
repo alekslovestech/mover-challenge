@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AddressItem } from "../types";
 
 interface AddressFormProps {
@@ -39,6 +39,62 @@ const AddressForm: React.FC<AddressFormProps> = ({
     addresses.every((addr) => addr.value.trim() !== "") &&
     !isLoading;
 
+  // Initialize Google Places Autocomplete for address inputs using the new PlaceAutocompleteElement
+  useEffect(() => {
+    const initAutocomplete = () => {
+      if (window.google?.maps?.places) {
+        const inputs = document.querySelectorAll(
+          'input[placeholder="Enter delivery address"]'
+        );
+        inputs.forEach((input) => {
+          if (input && !input.getAttribute("data-autocomplete-initialized")) {
+            // Create a new PlaceAutocompleteElement
+            const autocompleteElement =
+              new google.maps.places.PlaceAutocompleteElement({
+                types: ["address"],
+              });
+
+            // Replace the original input with the autocomplete element
+            const parent = input.parentNode;
+            if (parent) {
+              parent.replaceChild(autocompleteElement, input);
+
+              // Add event listener for place selection
+              autocompleteElement.addEventListener(
+                "gmp-placeselect",
+                (event: any) => {
+                  const place = event.place;
+                  if (place?.formattedAddress) {
+                    // Update the React state
+                    const addressId = (input as HTMLInputElement).getAttribute(
+                      "data-address-id"
+                    );
+                    if (addressId) {
+                      updateAddress(addressId, place.formattedAddress);
+                    }
+                  }
+                }
+              );
+
+              // Store the address ID for React state updates
+              autocompleteElement.setAttribute(
+                "data-address-id",
+                (input as HTMLInputElement).getAttribute("data-address-id") ||
+                  ""
+              );
+
+              input.setAttribute("data-autocomplete-initialized", "true");
+            }
+          }
+        });
+      }
+    };
+
+    // Wait for Google Maps to load
+    const timer = setTimeout(initAutocomplete, 1000);
+    return () => clearTimeout(timer);
+  }, [addresses]);
+
   return (
     <div className="card">
       <h2>Route Optimization</h2>
@@ -63,6 +119,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
               value={address.value}
               onChange={(e) => updateAddress(address.id, e.target.value)}
               placeholder="Enter delivery address"
+              data-address-id={address.id}
             />
             <button
               type="button"
