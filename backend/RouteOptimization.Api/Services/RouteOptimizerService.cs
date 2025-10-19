@@ -33,21 +33,12 @@ public class RouteOptimizerService : IRouteOptimizerService
                 };
             }
 
-            // Use starting point if provided, otherwise use first address
-            var startingPoint = !string.IsNullOrWhiteSpace(request.StartingPoint) 
-                ? request.StartingPoint 
-                : addresses[0];
+            // First address is the starting point, rest are delivery addresses
+            var startingPoint = addresses[0];
+            var deliveryAddresses = addresses.Skip(1).ToArray();
 
-            // Implement Nearest Neighbor Algorithm
-            var optimizedRoute = await OptimizeWithNearestNeighbor(addresses, startingPoint);
-
-            return new RouteResponse
-            {
-                OptimizedAddresses = optimizedRoute.Addresses,
-                TotalDistance = optimizedRoute.TotalDistance,
-                TotalDuration = optimizedRoute.TotalDuration,
-                Polyline = optimizedRoute.Polyline
-            };
+            // Implement Nearest Neighbor Algorithm with distance matrix
+            return await OptimizeWithNearestNeighbor(deliveryAddresses, startingPoint);
         }
         catch (Exception ex)
         {
@@ -58,10 +49,27 @@ public class RouteOptimizerService : IRouteOptimizerService
         }
     }
 
-    private async Task<OptimizedRoute> OptimizeWithNearestNeighbor(string[] addresses, string startingPoint)
+    private async Task<RouteResponse> OptimizeWithNearestNeighbor(string[] addresses, string startingPoint)
     {
-        var unvisited = addresses.Where(a => a != startingPoint).ToList();
-        var route = new List<string> { startingPoint };
+        // Create array that includes starting point
+        var allAddresses = new List<string> { startingPoint };
+        allAddresses.AddRange(addresses);
+        
+        // Get distance matrix for all pairs of addresses (including starting point)
+        var distanceMatrix = await _googleRoutesService.GetDistanceMatrixAsync(allAddresses.ToArray());
+        
+        // Create a lookup for distances
+        var distanceLookup = new Dictionary<string, Dictionary<string, AddressPair>>();
+        foreach (var pair in distanceMatrix)
+        {
+            if (!distanceLookup.ContainsKey(pair.Origin))
+                distanceLookup[pair.Origin] = new Dictionary<string, AddressPair>();
+            distanceLookup[pair.Origin][pair.Destination] = pair;
+        }
+
+        // Implement Nearest Neighbor Algorithm
+        var unvisited = addresses.ToList(); // All delivery addresses (starting point not included)
+        var optimizedRoute = new List<string> { startingPoint };
         var currentLocation = startingPoint;
         double totalDistance = 0;
         int totalDuration = 0;
@@ -69,10 +77,11 @@ public class RouteOptimizerService : IRouteOptimizerService
 
         while (unvisited.Count > 0)
         {
-            var nearestAddress = await FindNearestAddress(currentLocation, unvisited);
-            var distanceInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, nearestAddress);
+            // Find nearest unvisited address
+            var nearestAddress = FindNearestAddress(currentLocation, unvisited, distanceLookup);
+            var distanceInfo = distanceLookup[currentLocation][nearestAddress];
             
-            route.Add(nearestAddress);
+            optimizedRoute.Add(nearestAddress);
             totalDistance += distanceInfo.Distance;
             totalDuration += distanceInfo.Duration;
             
@@ -86,9 +95,10 @@ public class RouteOptimizerService : IRouteOptimizerService
         }
 
         // Optionally return to starting point
-        if (route.Count > 1)
+        if (optimizedRoute.Count > 1 && distanceLookup.ContainsKey(currentLocation) && 
+            distanceLookup[currentLocation].ContainsKey(startingPoint))
         {
-            var returnInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, startingPoint);
+            var returnInfo = distanceLookup[currentLocation][startingPoint];
             totalDistance += returnInfo.Distance;
             totalDuration += returnInfo.Duration;
             
@@ -98,38 +108,35 @@ public class RouteOptimizerService : IRouteOptimizerService
             }
         }
 
-        return new OptimizedRoute
+        return new RouteResponse
         {
-            Addresses = route.ToArray(),
+            OptimizedAddresses = optimizedRoute.ToArray(),
             TotalDistance = totalDistance,
             TotalDuration = totalDuration,
             Polyline = string.Join("", polylines) // Simplified - in reality you'd need to merge polylines properly
         };
     }
 
-    private async Task<string> FindNearestAddress(string currentLocation, List<string> unvisited)
+    private string FindNearestAddress(string currentLocation, List<string> unvisited, 
+        Dictionary<string, Dictionary<string, AddressPair>> distanceLookup)
     {
         var minDistance = double.MaxValue;
         string nearestAddress = unvisited[0];
 
         foreach (var address in unvisited)
         {
-            var distanceInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, address);
-            if (distanceInfo.Distance < minDistance)
+            if (distanceLookup.ContainsKey(currentLocation) && 
+                distanceLookup[currentLocation].ContainsKey(address))
             {
-                minDistance = distanceInfo.Distance;
-                nearestAddress = address;
+                var distance = distanceLookup[currentLocation][address].Distance;
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    nearestAddress = address;
+                }
             }
         }
 
         return nearestAddress;
-    }
-
-    private class OptimizedRoute
-    {
-        public string[] Addresses { get; set; } = Array.Empty<string>();
-        public double TotalDistance { get; set; }
-        public int TotalDuration { get; set; }
-        public string? Polyline { get; set; }
     }
 }

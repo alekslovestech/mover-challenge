@@ -1,6 +1,5 @@
 export interface RouteRequest {
   addresses: string[];
-  startingPoint?: string;
 }
 
 export interface RouteResponse {
