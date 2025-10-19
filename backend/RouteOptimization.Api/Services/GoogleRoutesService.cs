@@ -74,6 +74,11 @@ public class GoogleRoutesService : IGoogleRoutesService
         }
         catch (HttpRequestException ex)
         {
+              // Check for specific API key errors
+            if (ex.Message.Contains("403") || ex.Message.Contains("API_KEY_INVALID") || ex.Message.Contains("API_KEY_NOT_FOUND"))
+            {
+                throw new Exception("Invalid or missing Google Maps API key. Please check your configuration.");
+            }
             throw new Exception($"Error calling Google Routes API: {ex.Message}");
         }
     }
