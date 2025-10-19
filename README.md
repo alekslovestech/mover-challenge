@@ -80,7 +80,7 @@ yarn install:backend
 
 ```env
 REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-REACT_APP_API_URL=http://localhost:7000
+REACT_APP_API_URL=http://localhost:5000
 ```
 
 ### 4. Start the Application
@@ -108,8 +108,8 @@ yarn start:frontend
 ### 5. Access the Application
 
 - **Frontend**: http://localhost:3000
-- **Backend API**: https://localhost:7000
-- **API Documentation**: https://localhost:7000/swagger
+- **Backend API**: http://localhost:5000
+- **API Documentation**: http://localhost:5000/swagger
 
 ## Alternative Setup Instructions
 

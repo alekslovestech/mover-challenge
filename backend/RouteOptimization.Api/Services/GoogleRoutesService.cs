@@ -27,15 +27,6 @@ public class GoogleRoutesService : IGoogleRoutesService
             destination = new { address = destination },
             travelMode = "DRIVE",
             routingPreference = "TRAFFIC_AWARE",
-            computeAlternativeRoutes = false,
-            routeModifiers = new
-            {
-                avoidTolls = false,
-                avoidHighways = false,
-                avoidFerries = false
-            },
-            languageCode = "en-US",
-            units = "METRIC"
         };
 
         var json = JsonConvert.SerializeObject(requestBody);
@@ -103,4 +94,5 @@ public class GoogleRoutesService : IGoogleRoutesService
 
         return pairs;
     }
+
 }
