@@ -78,6 +78,8 @@ function App() {
               onAddressesChange={setAddresses}
               onOptimize={handleOptimize}
               isLoading={isLoading}
+              startingPoint={startingPoint}
+              onStartingPointChange={setStartingPoint}
             />
 
             <div className="card">

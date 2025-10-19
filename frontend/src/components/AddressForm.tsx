@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { AddressItem } from "../types";
 
 interface AddressFormProps {
@@ -6,6 +6,8 @@ interface AddressFormProps {
   onAddressesChange: (addresses: AddressItem[]) => void;
   onOptimize: () => void;
   isLoading: boolean;
+  startingPoint: string;
+  onStartingPointChange: (value: string) => void;
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({
@@ -13,8 +15,12 @@ const AddressForm: React.FC<AddressFormProps> = ({
   onAddressesChange,
   onOptimize,
   isLoading,
+  startingPoint,
+  onStartingPointChange,
 }) => {
-  const [startingPoint, setStartingPoint] = useState("");
+  // Use a ref to store the latest addresses to avoid stale closure issues
+  const addressesRef = useRef(addresses);
+  addressesRef.current = addresses;
 
   const addAddress = () => {
     const newAddress: AddressItem = {
@@ -29,71 +35,77 @@ const AddressForm: React.FC<AddressFormProps> = ({
   };
 
   const updateAddress = (id: string, value: string) => {
-    onAddressesChange(
-      addresses.map((addr) => (addr.id === id ? { ...addr, value } : addr))
+    // Use the ref to get the latest addresses instead of the stale closure
+    const currentAddresses = addressesRef.current;
+    const updatedAddresses = currentAddresses.map((addr) =>
+      addr.id === id ? { ...addr, value } : addr
     );
+    onAddressesChange(updatedAddresses);
   };
 
-  const canOptimize =
-    addresses.length >= 2 &&
-    addresses.every((addr) => addr.value.trim() !== "") &&
-    !isLoading;
+  const canOptimize = useMemo(() => {
+    console.log("recalculating canOptimize, Debug - addresses:", addresses);
+    const validAddresses = addresses.filter((addr) => addr.value.trim() !== "");
+    return validAddresses.length >= 2 && !isLoading;
+  }, [addresses, isLoading]);
 
-  // Initialize Google Places Autocomplete for address inputs using the new PlaceAutocompleteElement
+  // Initialize Google Places Autocomplete for address inputs using the legacy API
   useEffect(() => {
     const initAutocomplete = () => {
       if (window.google?.maps?.places) {
         const inputs = document.querySelectorAll(
-          'input[placeholder="Enter delivery address"]'
+          'input[placeholder="Enter delivery address"], input[placeholder="Enter starting address (leave empty to use first address)"]'
         );
+
         inputs.forEach((input) => {
-          if (input && !input.getAttribute("data-autocomplete-initialized")) {
-            // Create a new PlaceAutocompleteElement
-            const autocompleteElement =
-              new google.maps.places.PlaceAutocompleteElement({
+          if (!input.getAttribute("data-autocomplete-initialized")) {
+            const autocomplete = new google.maps.places.Autocomplete(
+              input as HTMLInputElement,
+              {
                 types: ["address"],
-              });
+              }
+            );
 
-            // Replace the original input with the autocomplete element
-            const parent = input.parentNode;
-            if (parent) {
-              parent.replaceChild(autocompleteElement, input);
+            autocomplete.addListener("place_changed", () => {
+              const place = autocomplete.getPlace();
+              if (place?.formatted_address) {
+                const address = place.formatted_address;
+                console.log("Autocomplete place selected:", address);
+                console.log("Input element:", input);
+                console.log("Input ID:", input.id);
+                console.log(
+                  "Input data-address-id:",
+                  input.getAttribute("data-address-id")
+                );
 
-              // Add event listener for place selection
-              autocompleteElement.addEventListener(
-                "gmp-placeselect",
-                (event: any) => {
-                  const place = event.place;
-                  if (place?.formattedAddress) {
-                    // Update the React state
-                    const addressId = (input as HTMLInputElement).getAttribute(
-                      "data-address-id"
-                    );
-                    if (addressId) {
-                      updateAddress(addressId, place.formattedAddress);
-                    }
+                // Check if this is the starting point input
+                const isStartingPoint = input.id === "startingPoint";
+                console.log("Is starting point:", isStartingPoint);
+
+                if (isStartingPoint) {
+                  console.log("Updating starting point:", address);
+                  onStartingPointChange(address);
+                } else {
+                  const addressId = input.getAttribute("data-address-id");
+                  console.log("Updating delivery address:", addressId, address);
+                  if (addressId) {
+                    updateAddress(addressId, address);
+                  } else {
+                    console.error("No address ID found for input:", input);
                   }
                 }
-              );
+              }
+            });
 
-              // Store the address ID for React state updates
-              autocompleteElement.setAttribute(
-                "data-address-id",
-                (input as HTMLInputElement).getAttribute("data-address-id") ||
-                  ""
-              );
-
-              input.setAttribute("data-autocomplete-initialized", "true");
-            }
+            input.setAttribute("data-autocomplete-initialized", "true");
           }
         });
       }
     };
 
-    // Wait for Google Maps to load
     const timer = setTimeout(initAutocomplete, 1000);
     return () => clearTimeout(timer);
-  }, [addresses]);
+  }, [addresses, onStartingPointChange, updateAddress]);
 
   return (
     <div className="card">
@@ -105,7 +117,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
           id="startingPoint"
           type="text"
           value={startingPoint}
-          onChange={(e) => setStartingPoint(e.target.value)}
+          onChange={(e) => onStartingPointChange(e.target.value)}
           placeholder="Enter starting address (leave empty to use first address)"
         />
       </div>
