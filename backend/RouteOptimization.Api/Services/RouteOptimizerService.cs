@@ -33,12 +33,8 @@ public class RouteOptimizerService : IRouteOptimizerService
                 };
             }
 
-            // First address is the starting point, rest are delivery addresses
-            var startingPoint = addresses[0];
-            var deliveryAddresses = addresses.Skip(1).ToArray();
-
             // Implement Nearest Neighbor Algorithm with distance matrix
-            return await OptimizeWithNearestNeighbor(deliveryAddresses, startingPoint);
+            return await OptimizeWithNearestNeighbor(addresses);
         }
         catch (Exception ex)
         {
@@ -49,39 +45,42 @@ public class RouteOptimizerService : IRouteOptimizerService
         }
     }
 
-    private async Task<RouteResponse> OptimizeWithNearestNeighbor(string[] addresses, string startingPoint)
+    private async Task<RouteResponse> OptimizeWithNearestNeighbor(string[] addresses)
     {
-        // Create array that includes starting point
-        var allAddresses = new List<string> { startingPoint };
-        allAddresses.AddRange(addresses);
+        // First address is the starting point, rest are delivery addresses
+        var startingPoint = addresses[0];
+        var deliveryAddresses = addresses.Skip(1).ToArray();
         
         // Get distance matrix for all pairs of addresses (including starting point)
-        var distanceMatrix = await _googleRoutesService.GetDistanceMatrixAsync(allAddresses.ToArray());
+        var distanceMatrix = await _googleRoutesService.GetDistanceMatrixAsync(addresses);
         
-        // Create a lookup for distances
-        var distanceLookup = new Dictionary<string, Dictionary<string, AddressPair>>();
-        foreach (var pair in distanceMatrix)
-        {
-            if (!distanceLookup.ContainsKey(pair.Origin))
-                distanceLookup[pair.Origin] = new Dictionary<string, AddressPair>();
-            distanceLookup[pair.Origin][pair.Destination] = pair;
-        }
+        // Create 2D distance matrix
+        var distanceMatrix2D = BuildDistanceMatrix(distanceMatrix, addresses);
 
-        // Implement Nearest Neighbor Algorithm
-        var unvisited = addresses.ToList(); // All delivery addresses (starting point not included)
-        var optimizedRoute = new List<string> { startingPoint };
-        var currentLocation = startingPoint;
+        // Convert to indices for optimization
+        var addressToIndex = addresses.Select((addr, i) => (addr, i)).ToDictionary(x => x.addr, x => x.i);
+        var startingIndex = addressToIndex[startingPoint];
+        var deliveryIndices = deliveryAddresses.Select(addr => addressToIndex[addr]).ToList();
+        
+        // Implement Nearest Neighbor Algorithm with indices
+        var unvisitedIndices = deliveryIndices.ToList();
+        var optimizedIndices = new List<int> { startingIndex };
+        var currentIndex = startingIndex;
         double totalDistance = 0;
         int totalDuration = 0;
         var polylines = new List<string>();
 
-        while (unvisited.Count > 0)
+        while (unvisitedIndices.Count > 0)
         {
-            // Find nearest unvisited address
-            var nearestAddress = FindNearestAddress(currentLocation, unvisited, distanceLookup);
-            var distanceInfo = distanceLookup[currentLocation][nearestAddress];
+            // Find nearest unvisited index
+            var nearestIndex = FindNearestIndex(currentIndex, unvisitedIndices, distanceMatrix2D);
             
-            optimizedRoute.Add(nearestAddress);
+            // Get distance info from original matrix
+            var currentAddress = addresses[currentIndex];
+            var nearestAddress = addresses[nearestIndex];
+            var distanceInfo = distanceMatrix.First(p => p.Origin == currentAddress && p.Destination == nearestAddress);
+            
+            optimizedIndices.Add(nearestIndex);
             totalDistance += distanceInfo.Distance;
             totalDuration += distanceInfo.Duration;
             
@@ -90,53 +89,70 @@ public class RouteOptimizerService : IRouteOptimizerService
                 polylines.Add(distanceInfo.Polyline);
             }
 
-            unvisited.Remove(nearestAddress);
-            currentLocation = nearestAddress;
+            unvisitedIndices.Remove(nearestIndex);
+            currentIndex = nearestIndex;
         }
 
         // Optionally return to starting point
-        if (optimizedRoute.Count > 1 && distanceLookup.ContainsKey(currentLocation) && 
-            distanceLookup[currentLocation].ContainsKey(startingPoint))
+        if (optimizedIndices.Count > 1)
         {
-            var returnInfo = distanceLookup[currentLocation][startingPoint];
-            totalDistance += returnInfo.Distance;
-            totalDuration += returnInfo.Duration;
-            
-            if (!string.IsNullOrEmpty(returnInfo.Polyline))
+            var currentAddress = addresses[currentIndex];
+            var returnInfo = distanceMatrix.FirstOrDefault(p => p.Origin == currentAddress && p.Destination == startingPoint);
+            if (returnInfo != null)
             {
-                polylines.Add(returnInfo.Polyline);
+                totalDistance += returnInfo.Distance;
+                totalDuration += returnInfo.Duration;
+                
+                if (!string.IsNullOrEmpty(returnInfo.Polyline))
+                {
+                    polylines.Add(returnInfo.Polyline);
+                }
             }
         }
 
+        // Convert optimized indices back to addresses
+        var optimizedAddresses = optimizedIndices.Select(i => addresses[i]).ToArray();
+
         return new RouteResponse
         {
-            OptimizedAddresses = optimizedRoute.ToArray(),
+            OptimizedAddresses = optimizedAddresses,
             TotalDistance = totalDistance,
             TotalDuration = totalDuration,
             Polyline = string.Join("", polylines) // Simplified - in reality you'd need to merge polylines properly
         };
     }
 
-    private string FindNearestAddress(string currentLocation, List<string> unvisited, 
-        Dictionary<string, Dictionary<string, AddressPair>> distanceLookup)
+    private double[,] BuildDistanceMatrix(List<AddressPair> distancePairs, string[] addresses)
+    {
+        var addressToIndex = addresses.Select((addr, i) => (addr, i)).ToDictionary(x => x.addr, x => x.i);
+        var matrix = new double[addresses.Length, addresses.Length];
+        
+        foreach (var pair in distancePairs)
+        {
+            var fromIndex = addressToIndex[pair.Origin];
+            var toIndex = addressToIndex[pair.Destination];
+            matrix[fromIndex, toIndex] = pair.Distance;
+        }
+        
+        return matrix;
+    }
+
+    private int FindNearestIndex(int currentIndex, List<int> unvisitedIndices, double[,] distanceMatrix)
     {
         var minDistance = double.MaxValue;
-        string nearestAddress = unvisited[0];
+        int nearestIndex = unvisitedIndices[0];
 
-        foreach (var address in unvisited)
+        foreach (var addressIndex in unvisitedIndices)
         {
-            if (distanceLookup.ContainsKey(currentLocation) && 
-                distanceLookup[currentLocation].ContainsKey(address))
+            var distance = distanceMatrix[currentIndex, addressIndex];
+            
+            if (distance < minDistance)
             {
-                var distance = distanceLookup[currentLocation][address].Distance;
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    nearestAddress = address;
-                }
+                minDistance = distance;
+                nearestIndex = addressIndex;
             }
         }
 
-        return nearestAddress;
+        return nearestIndex;
     }
 }
