@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { AddressItem } from "../types";
 
 interface AddressFormProps {
@@ -6,6 +6,8 @@ interface AddressFormProps {
   onAddressesChange: (addresses: AddressItem[]) => void;
   onOptimize: () => void;
   isLoading: boolean;
+  startingPoint: string;
+  onStartingPointChange: (value: string) => void;
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({
@@ -13,8 +15,12 @@ const AddressForm: React.FC<AddressFormProps> = ({
   onAddressesChange,
   onOptimize,
   isLoading,
+  startingPoint,
+  onStartingPointChange,
 }) => {
-  const [startingPoint, setStartingPoint] = useState("");
+  // Use a ref to store the latest addresses to avoid stale closure issues
+  const addressesRef = useRef(addresses);
+  addressesRef.current = addresses;
 
   const addAddress = () => {
     const newAddress: AddressItem = {
@@ -29,15 +35,66 @@ const AddressForm: React.FC<AddressFormProps> = ({
   };
 
   const updateAddress = (id: string, value: string) => {
-    onAddressesChange(
-      addresses.map((addr) => (addr.id === id ? { ...addr, value } : addr))
+    // Use the ref to get the latest addresses instead of the stale closure
+    const currentAddresses = addressesRef.current;
+    const updatedAddresses = currentAddresses.map((addr) =>
+      addr.id === id ? { ...addr, value } : addr
     );
+    onAddressesChange(updatedAddresses);
   };
 
-  const canOptimize =
-    addresses.length >= 2 &&
-    addresses.every((addr) => addr.value.trim() !== "") &&
-    !isLoading;
+  const canOptimize = useMemo(() => {
+    const validAddresses = addresses.filter((addr) => addr.value.trim() !== "");
+    return validAddresses.length >= 2 && !isLoading;
+  }, [addresses, isLoading]);
+
+  // Initialize Google Places Autocomplete for address inputs using the legacy API
+  useEffect(() => {
+    const initAutocomplete = () => {
+      if (window.google?.maps?.places) {
+        const inputs = document.querySelectorAll(
+          'input[placeholder="Enter delivery address"], input[placeholder="Enter starting address (leave empty to use first address)"]'
+        );
+
+        inputs.forEach((input) => {
+          if (!input.getAttribute("data-autocomplete-initialized")) {
+            const autocomplete = new google.maps.places.Autocomplete(
+              input as HTMLInputElement,
+              {
+                types: ["address"],
+              }
+            );
+
+            autocomplete.addListener("place_changed", () => {
+              const place = autocomplete.getPlace();
+              if (place?.formatted_address) {
+                const address = place.formatted_address;
+
+                // Check if this is the starting point input
+                const isStartingPoint = input.id === "startingPoint";
+
+                if (isStartingPoint) {
+                  onStartingPointChange(address);
+                } else {
+                  const addressId = input.getAttribute("data-address-id");
+                  if (addressId) {
+                    updateAddress(addressId, address);
+                  } else {
+                    console.error("No address ID found for input:", input);
+                  }
+                }
+              }
+            });
+
+            input.setAttribute("data-autocomplete-initialized", "true");
+          }
+        });
+      }
+    };
+
+    const timer = setTimeout(initAutocomplete, 1000);
+    return () => clearTimeout(timer);
+  }, [addresses, onStartingPointChange, updateAddress]);
 
   return (
     <div className="card">
@@ -49,7 +106,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
           id="startingPoint"
           type="text"
           value={startingPoint}
-          onChange={(e) => setStartingPoint(e.target.value)}
+          onChange={(e) => onStartingPointChange(e.target.value)}
           placeholder="Enter starting address (leave empty to use first address)"
         />
       </div>
@@ -63,6 +120,7 @@ const AddressForm: React.FC<AddressFormProps> = ({
               value={address.value}
               onChange={(e) => updateAddress(address.id, e.target.value)}
               placeholder="Enter delivery address"
+              data-address-id={address.id}
             />
             <button
               type="button"

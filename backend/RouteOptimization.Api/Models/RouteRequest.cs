@@ -3,7 +3,6 @@ namespace RouteOptimization.Api.Models;
 public class RouteRequest
 {
     public string[] Addresses { get; set; } = Array.Empty<string>();
-    public string? StartingPoint { get; set; }
 }
 
 public class RouteResponse

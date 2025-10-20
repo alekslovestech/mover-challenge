@@ -8,10 +8,12 @@ import "./App.css";
 
 function App() {
   const [addresses, setAddresses] = useState<AddressItem[]>([
-    { id: "1", value: "" },
-    { id: "2", value: "" },
+    { id: "1", value: "Lufthavnen, 2770 Kastrup, Denmark" },
+    { id: "2", value: "Alexanderpl., 10178 Berlin, Germany" },
   ]);
-  const [startingPoint, setStartingPoint] = useState("");
+  const [startingPoint, setStartingPoint] = useState(
+    "Finlandsgade 23, 2300 København, Denmark"
+  );
   const [result, setResult] = useState<RouteResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,13 +28,15 @@ function App() {
         .map((addr) => addr.value.trim())
         .filter((addr) => addr !== "");
 
-      if (validAddresses.length < 2) {
-        throw new Error("At least 2 addresses are required");
+      if (validAddresses.length < 1) {
+        throw new Error("At least 1 delivery address is required");
       }
 
+      // Combine starting point and delivery addresses into single array
+      const allAddresses = [startingPoint.trim(), ...validAddresses];
+
       const request = {
-        addresses: validAddresses,
-        startingPoint: startingPoint.trim() || undefined,
+        addresses: allAddresses,
       };
 
       const response = await routeApi.optimizeRoute(request);
@@ -78,6 +82,8 @@ function App() {
               onAddressesChange={setAddresses}
               onOptimize={handleOptimize}
               isLoading={isLoading}
+              startingPoint={startingPoint}
+              onStartingPointChange={setStartingPoint}
             />
 
             <div className="card">

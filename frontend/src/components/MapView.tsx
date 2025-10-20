@@ -20,6 +20,11 @@ const MapView: React.FC<MapViewProps> = ({
 
   useEffect(() => {
     const initMap = async () => {
+      const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+      if (!apiKey || apiKey.trim() === "") {
+        console.error("Google Maps API key is not configured");
+        return;
+      }
       const loader = new Loader({
         apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "",
         version: "weekly",

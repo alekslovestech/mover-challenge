@@ -33,21 +33,8 @@ public class RouteOptimizerService : IRouteOptimizerService
                 };
             }
 
-            // Use starting point if provided, otherwise use first address
-            var startingPoint = !string.IsNullOrWhiteSpace(request.StartingPoint) 
-                ? request.StartingPoint 
-                : addresses[0];
-
-            // Implement Nearest Neighbor Algorithm
-            var optimizedRoute = await OptimizeWithNearestNeighbor(addresses, startingPoint);
-
-            return new RouteResponse
-            {
-                OptimizedAddresses = optimizedRoute.Addresses,
-                TotalDistance = optimizedRoute.TotalDistance,
-                TotalDuration = optimizedRoute.TotalDuration,
-                Polyline = optimizedRoute.Polyline
-            };
+            // Implement Nearest Neighbor Algorithm with distance matrix
+            return await OptimizeWithNearestNeighbor(addresses);
         }
         catch (Exception ex)
         {
@@ -58,21 +45,42 @@ public class RouteOptimizerService : IRouteOptimizerService
         }
     }
 
-    private async Task<OptimizedRoute> OptimizeWithNearestNeighbor(string[] addresses, string startingPoint)
+    private async Task<RouteResponse> OptimizeWithNearestNeighbor(string[] addresses)
     {
-        var unvisited = addresses.Where(a => a != startingPoint).ToList();
-        var route = new List<string> { startingPoint };
-        var currentLocation = startingPoint;
+        // First address is the starting point, rest are delivery addresses
+        var startingPoint = addresses[0];
+        var deliveryAddresses = addresses.Skip(1).ToArray();
+        
+        // Get distance matrix for all pairs of addresses (including starting point)
+        var distanceMatrix = await _googleRoutesService.GetDistanceMatrixAsync(addresses);
+        
+        // Create 2D distance matrix
+        var distanceMatrix2D = BuildDistanceMatrix(distanceMatrix, addresses);
+
+        // Convert to indices for optimization
+        var addressToIndex = addresses.Select((addr, i) => (addr, i)).ToDictionary(x => x.addr, x => x.i);
+        var startingIndex = addressToIndex[startingPoint];
+        var deliveryIndices = deliveryAddresses.Select(addr => addressToIndex[addr]).ToList();
+        
+        // Implement Nearest Neighbor Algorithm with indices
+        var unvisitedIndices = deliveryIndices.ToList();
+        var optimizedIndices = new List<int> { startingIndex };
+        var currentIndex = startingIndex;
         double totalDistance = 0;
         int totalDuration = 0;
         var polylines = new List<string>();
 
-        while (unvisited.Count > 0)
+        while (unvisitedIndices.Count > 0)
         {
-            var nearestAddress = await FindNearestAddress(currentLocation, unvisited);
-            var distanceInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, nearestAddress);
+            // Find nearest unvisited index
+            var nearestIndex = FindNearestIndex(currentIndex, unvisitedIndices, distanceMatrix2D);
             
-            route.Add(nearestAddress);
+            // Get distance info from original matrix
+            var currentAddress = addresses[currentIndex];
+            var nearestAddress = addresses[nearestIndex];
+            var distanceInfo = distanceMatrix.First(p => p.Origin == currentAddress && p.Destination == nearestAddress);
+            
+            optimizedIndices.Add(nearestIndex);
             totalDistance += distanceInfo.Distance;
             totalDuration += distanceInfo.Duration;
             
@@ -81,55 +89,70 @@ public class RouteOptimizerService : IRouteOptimizerService
                 polylines.Add(distanceInfo.Polyline);
             }
 
-            unvisited.Remove(nearestAddress);
-            currentLocation = nearestAddress;
+            unvisitedIndices.Remove(nearestIndex);
+            currentIndex = nearestIndex;
         }
 
         // Optionally return to starting point
-        if (route.Count > 1)
+        if (optimizedIndices.Count > 1)
         {
-            var returnInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, startingPoint);
-            totalDistance += returnInfo.Distance;
-            totalDuration += returnInfo.Duration;
-            
-            if (!string.IsNullOrEmpty(returnInfo.Polyline))
+            var currentAddress = addresses[currentIndex];
+            var returnInfo = distanceMatrix.FirstOrDefault(p => p.Origin == currentAddress && p.Destination == startingPoint);
+            if (returnInfo != null)
             {
-                polylines.Add(returnInfo.Polyline);
+                totalDistance += returnInfo.Distance;
+                totalDuration += returnInfo.Duration;
+                
+                if (!string.IsNullOrEmpty(returnInfo.Polyline))
+                {
+                    polylines.Add(returnInfo.Polyline);
+                }
             }
         }
 
-        return new OptimizedRoute
+        // Convert optimized indices back to addresses
+        var optimizedAddresses = optimizedIndices.Select(i => addresses[i]).ToArray();
+
+        return new RouteResponse
         {
-            Addresses = route.ToArray(),
+            OptimizedAddresses = optimizedAddresses,
             TotalDistance = totalDistance,
             TotalDuration = totalDuration,
             Polyline = string.Join("", polylines) // Simplified - in reality you'd need to merge polylines properly
         };
     }
 
-    private async Task<string> FindNearestAddress(string currentLocation, List<string> unvisited)
+    private double[,] BuildDistanceMatrix(List<AddressPair> distancePairs, string[] addresses)
+    {
+        var addressToIndex = addresses.Select((addr, i) => (addr, i)).ToDictionary(x => x.addr, x => x.i);
+        var matrix = new double[addresses.Length, addresses.Length];
+        
+        foreach (var pair in distancePairs)
+        {
+            var fromIndex = addressToIndex[pair.Origin];
+            var toIndex = addressToIndex[pair.Destination];
+            matrix[fromIndex, toIndex] = pair.Distance;
+        }
+        
+        return matrix;
+    }
+
+    private int FindNearestIndex(int currentIndex, List<int> unvisitedIndices, double[,] distanceMatrix)
     {
         var minDistance = double.MaxValue;
-        string nearestAddress = unvisited[0];
+        int nearestIndex = unvisitedIndices[0];
 
-        foreach (var address in unvisited)
+        foreach (var addressIndex in unvisitedIndices)
         {
-            var distanceInfo = await _googleRoutesService.GetDistanceAndDurationAsync(currentLocation, address);
-            if (distanceInfo.Distance < minDistance)
+            var distance = distanceMatrix[currentIndex, addressIndex];
+            
+            if (distance < minDistance)
             {
-                minDistance = distanceInfo.Distance;
-                nearestAddress = address;
+                minDistance = distance;
+                nearestIndex = addressIndex;
             }
         }
 
-        return nearestAddress;
-    }
-
-    private class OptimizedRoute
-    {
-        public string[] Addresses { get; set; } = Array.Empty<string>();
-        public double TotalDistance { get; set; }
-        public int TotalDuration { get; set; }
-        public string? Polyline { get; set; }
+        return nearestIndex;
     }
 }

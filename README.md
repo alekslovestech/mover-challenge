@@ -36,16 +36,84 @@ A fullstack application that optimizes delivery routes using Google Routes API a
   - Maps JavaScript API
   - Geocoding API
 
-## Setup Instructions
+## Quick Start
 
 ### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
-cd route-optimization-app
+cd mover-challenge
 ```
 
-### 2. Backend Setup
+### 2. Install Dependencies
+
+Install all dependencies for both frontend and backend:
+
+```bash
+yarn setup
+```
+
+Or install manually:
+
+```bash
+# Install root dependencies
+yarn install
+
+# Install frontend dependencies
+yarn install:frontend
+
+# Install backend dependencies
+yarn install:backend
+```
+
+### 3. Configure API Keys
+
+**Backend Configuration:**
+
+- Open `backend/RouteOptimization.Api/appsettings.json` and `backend/RouteOptimization.Api/appsettings.Development.json`
+- Replace `YOUR_GOOGLE_MAPS_API_KEY_HERE` with your actual Google Maps API key
+
+**Frontend Configuration:**
+
+- Create a `.env` file in the `frontend` directory
+- Add your Google Maps API key:
+
+```env
+REACT_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+REACT_APP_API_URL=http://localhost:5000
+```
+
+### 4. Start the Application
+
+**Option 1: Start both services together (Recommended)**
+
+```bash
+yarn start
+```
+
+**Option 2: Start services separately**
+
+Start the backend:
+
+```bash
+yarn start:backend
+```
+
+In a new terminal, start the frontend:
+
+```bash
+yarn start:frontend
+```
+
+### 5. Access the Application
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+- **API Documentation**: http://localhost:5000/swagger
+
+## Alternative Setup Instructions
+
+### Manual Backend Setup
 
 1. Navigate to the backend directory:
 
@@ -59,10 +127,7 @@ cd backend/RouteOptimization.Api
 dotnet restore
 ```
 
-3. Configure the Google Maps API key:
-
-   - Open `appsettings.json` and `appsettings.Development.json`
-   - Replace `YOUR_GOOGLE_MAPS_API_KEY_HERE` with your actual Google Maps API key
+3. Configure the Google Maps API key in `appsettings.json`
 
 4. Run the backend:
 
@@ -70,9 +135,7 @@ dotnet restore
 dotnet run
 ```
 
-The API will be available at `https://localhost:7000` (or the port shown in the console).
-
-### 3. Frontend Setup
+### Manual Frontend Setup
 
 1. Navigate to the frontend directory:
 
@@ -83,22 +146,16 @@ cd frontend
 2. Install dependencies:
 
 ```bash
-npm install
+yarn install
 ```
 
-3. Configure environment variables:
-
-   - Copy `env.example` to `.env`
-   - Replace `your_google_maps_api_key_here` with your Google Maps API key
-   - Update `REACT_APP_API_URL` if your backend runs on a different port
+3. Configure environment variables in `.env` file
 
 4. Start the development server:
 
 ```bash
-npm start
+yarn start
 ```
-
-The frontend will be available at `http://localhost:3000`.
 
 ## API Endpoints
 
