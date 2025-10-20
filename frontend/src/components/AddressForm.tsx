@@ -44,7 +44,6 @@ const AddressForm: React.FC<AddressFormProps> = ({
   };
 
   const canOptimize = useMemo(() => {
-    console.log("recalculating canOptimize, Debug - addresses:", addresses);
     const validAddresses = addresses.filter((addr) => addr.value.trim() !== "");
     return validAddresses.length >= 2 && !isLoading;
   }, [addresses, isLoading]);
@@ -70,24 +69,14 @@ const AddressForm: React.FC<AddressFormProps> = ({
               const place = autocomplete.getPlace();
               if (place?.formatted_address) {
                 const address = place.formatted_address;
-                console.log("Autocomplete place selected:", address);
-                console.log("Input element:", input);
-                console.log("Input ID:", input.id);
-                console.log(
-                  "Input data-address-id:",
-                  input.getAttribute("data-address-id")
-                );
 
                 // Check if this is the starting point input
                 const isStartingPoint = input.id === "startingPoint";
-                console.log("Is starting point:", isStartingPoint);
 
                 if (isStartingPoint) {
-                  console.log("Updating starting point:", address);
                   onStartingPointChange(address);
                 } else {
                   const addressId = input.getAttribute("data-address-id");
-                  console.log("Updating delivery address:", addressId, address);
                   if (addressId) {
                     updateAddress(addressId, address);
                   } else {
