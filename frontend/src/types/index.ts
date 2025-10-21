@@ -6,7 +6,6 @@ export interface RouteResponse {
   optimizedAddresses: string[];
   totalDistance: number;
   totalDuration: number;
-  polyline?: string;
   errorMessage?: string;
 }
 

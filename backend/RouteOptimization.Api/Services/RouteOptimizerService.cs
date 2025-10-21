@@ -84,11 +84,7 @@ public class RouteOptimizerService : IRouteOptimizerService
             totalDistance += distanceInfo.Distance;
             totalDuration += distanceInfo.Duration;
             
-            if (!string.IsNullOrEmpty(distanceInfo.Polyline))
-            {
-                polylines.Add(distanceInfo.Polyline);
-            }
-
+            
             unvisitedIndices.Remove(nearestIndex);
             currentIndex = nearestIndex;
         }
@@ -102,11 +98,6 @@ public class RouteOptimizerService : IRouteOptimizerService
             {
                 totalDistance += returnInfo.Distance;
                 totalDuration += returnInfo.Duration;
-                
-                if (!string.IsNullOrEmpty(returnInfo.Polyline))
-                {
-                    polylines.Add(returnInfo.Polyline);
-                }
             }
         }
 
@@ -118,7 +109,6 @@ public class RouteOptimizerService : IRouteOptimizerService
             OptimizedAddresses = optimizedAddresses,
             TotalDistance = totalDistance,
             TotalDuration = totalDuration,
-            Polyline = string.Join("", polylines) // Simplified - in reality you'd need to merge polylines properly
         };
     }
 

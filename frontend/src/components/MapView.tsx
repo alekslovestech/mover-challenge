@@ -3,15 +3,10 @@ import { Loader } from "@googlemaps/js-api-loader";
 
 interface MapViewProps {
   addresses: string[];
-  polyline?: string;
   isLoading: boolean;
 }
 
-const MapView: React.FC<MapViewProps> = ({
-  addresses,
-  polyline,
-  isLoading,
-}) => {
+const MapView: React.FC<MapViewProps> = ({ addresses, isLoading }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
@@ -40,7 +35,15 @@ const MapView: React.FC<MapViewProps> = ({
             zoom: 10,
             mapTypeId: google.maps.MapTypeId.ROADMAP,
           });
-          setMapLoaded(true);
+
+          // Wait for the map to be fully loaded using the idle event
+          google.maps.event.addListenerOnce(
+            mapInstanceRef.current,
+            "idle",
+            () => {
+              setMapLoaded(true);
+            }
+          );
         }
       } catch (error) {
         console.error("Error loading Google Maps:", error);
@@ -51,93 +54,98 @@ const MapView: React.FC<MapViewProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!mapLoaded || !mapInstanceRef.current || addresses.length === 0) {
+    // Skip map operations if the map isn't ready or there are no addresses to display
+    if (!mapLoaded) {
+      return;
+    }
+    if (!mapInstanceRef.current) {
+      return;
+    }
+    if (addresses.length === 0) {
+      // DON'T clear markers/polyline when there are no addresses - keep the map as is
       return;
     }
 
-    // Clear existing markers and polyline
+    // Clear existing markers and polyline if we have addresses to process
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
 
+    // Clear existing route renderer
     if (polylineRef.current) {
-      polylineRef.current.setMap(null);
+      if (polylineRef.current.setMap) {
+        polylineRef.current.setMap(null);
+      }
+      polylineRef.current = null;
     }
 
-    // Geocode addresses and add markers
-    const geocoder = new google.maps.Geocoder();
-    const bounds = new google.maps.LatLngBounds();
-    let geocodedCount = 0;
+    // Use DirectionsService to render route from address sequence (works for both original and optimized)
+    if (addresses.length > 0) {
+      const directionsService = new google.maps.DirectionsService();
+      const directionsRenderer = new google.maps.DirectionsRenderer();
 
-    addresses.forEach((address, index) => {
-      geocoder.geocode({ address }, (results, status) => {
-        if (
-          status === "OK" &&
-          results &&
-          results[0] &&
-          mapInstanceRef.current
-        ) {
-          const location = results[0].geometry.location;
+      // Set up waypoints (all addresses except first and last)
+      const waypoints =
+        addresses.length > 2
+          ? addresses.slice(1, -1).map((addr) => ({ location: addr }))
+          : [];
 
-          const marker = new google.maps.Marker({
-            position: location,
-            map: mapInstanceRef.current,
-            title: address,
-            label: {
-              text: (index + 1).toString(),
-              color: "white",
-              fontWeight: "bold",
-            },
-            icon: {
-              url: `https://maps.google.com/mapfiles/ms/icons/${
-                index === 0 ? "red" : "blue"
-              }-dot.png`,
-              scaledSize: new google.maps.Size(32, 32),
-            },
-          });
+      const request = {
+        origin: addresses[0],
+        destination: addresses[addresses.length - 1],
+        waypoints: waypoints,
+        travelMode: google.maps.TravelMode.DRIVING,
+        optimizeWaypoints: false, // Don't re-optimize, use the order we provide
+      };
 
-          markersRef.current.push(marker);
-          bounds.extend(location);
-          geocodedCount++;
+      directionsService.route(request, (result, status) => {
+        if (status === "OK" && mapInstanceRef.current) {
+          directionsRenderer.setMap(mapInstanceRef.current);
+          directionsRenderer.setDirections(result);
 
-          // Fit bounds when all addresses are geocoded
-          if (geocodedCount === addresses.length) {
-            mapInstanceRef.current.fitBounds(bounds);
-          }
+          // Store the renderer reference to clear it later
+          polylineRef.current = directionsRenderer as any;
         }
       });
-    });
-
-    // Draw polyline if provided
-    if (polyline && mapInstanceRef.current) {
-      try {
-        const decodedPath = google.maps.geometry.encoding.decodePath(polyline);
-        polylineRef.current = new google.maps.Polyline({
-          path: decodedPath,
-          geodesic: true,
-          strokeColor: "#FF0000",
-          strokeOpacity: 1.0,
-          strokeWeight: 3,
-          map: mapInstanceRef.current,
-        });
-      } catch (error) {
-        console.error("Error decoding polyline:", error);
-      }
     }
-  }, [addresses, polyline, mapLoaded]);
+  }, [addresses, mapLoaded]);
 
-  if (isLoading) {
+  /*if (isLoading) {
     return (
       <div className="card">
         <h3>Map</h3>
         <div className="loading">Loading map...</div>
       </div>
     );
-  }
+  }*/
 
   return (
     <div className="card">
       <h3>Route Map</h3>
-      <div ref={mapRef} className="map-container" />
+
+      {/* Keep the test button */}
+      <button
+        onClick={() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.setCenter({ lat: 52.52, lng: 13.405 });
+            mapInstanceRef.current.setZoom(10);
+            google.maps.event.trigger(mapInstanceRef.current, "resize");
+          }
+        }}
+        style={{ marginBottom: "10px", padding: "5px 10px" }}
+      >
+        Test: Move to Berlin
+      </button>
+
+      <div
+        ref={mapRef}
+        className="map-container"
+        style={{
+          height: "400px",
+          width: "500px", // Change from "100%" to explicit pixels
+          border: "1px solid #ccc",
+          backgroundColor: "#f0f0f0",
+        }}
+      />
       {addresses.length === 0 && (
         <p style={{ textAlign: "center", color: "#666", marginTop: "20px" }}>
           Add addresses to see them on the map

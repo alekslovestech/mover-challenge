@@ -12,7 +12,7 @@ function App() {
     { id: "2", value: "Lufthavnen, 2770 Kastrup, Denmark" },
   ]);
   const [startingPoint, setStartingPoint] = useState(
-    "Finlandsgade 23, 2300 København, Denmark"
+    "Amagerbro Torv, 2300 København, Denmark"
   );
   const [result, setResult] = useState<RouteResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,7 +109,6 @@ function App() {
               ...addresses.map((a) => a.value),
             ]
           }
-          polyline={result?.polyline}
           isLoading={isLoading}
         />
       </div>
