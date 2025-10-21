@@ -8,8 +8,8 @@ import "./App.css";
 
 function App() {
   const [addresses, setAddresses] = useState<AddressItem[]>([
-    { id: "1", value: "Lufthavnen, 2770 Kastrup, Denmark" },
-    { id: "2", value: "Alexanderpl., 10178 Berlin, Germany" },
+    { id: "1", value: "Dragør Stationsplads, 2791 Dragør, Denmark" },
+    { id: "2", value: "Lufthavnen, 2770 Kastrup, Denmark" },
   ]);
   const [startingPoint, setStartingPoint] = useState(
     "Finlandsgade 23, 2300 København, Denmark"
@@ -97,14 +97,18 @@ function App() {
               </button>
             </div>
           </div>
-
           <div>
             <ResultsPanel result={result} isLoading={isLoading} error={error} />
           </div>
         </div>
 
         <MapView
-          addresses={result?.optimizedAddresses || []}
+          addresses={
+            result?.optimizedAddresses || [
+              startingPoint,
+              ...addresses.map((a) => a.value),
+            ]
+          }
           polyline={result?.polyline}
           isLoading={isLoading}
         />

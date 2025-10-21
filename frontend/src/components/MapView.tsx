@@ -28,7 +28,7 @@ const MapView: React.FC<MapViewProps> = ({
       const loader = new Loader({
         apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "",
         version: "weekly",
-        libraries: ["places"],
+        libraries: ["places", "geometry"],
       });
 
       try {
@@ -36,7 +36,7 @@ const MapView: React.FC<MapViewProps> = ({
 
         if (mapRef.current && !mapInstanceRef.current) {
           mapInstanceRef.current = new google.maps.Map(mapRef.current, {
-            center: { lat: 40.7128, lng: -74.006 }, // Default to NYC
+            center: { lat: 55.6713366, lng: 12.5114235 }, // Default to CPH (55.6713366,12.5114235)
             zoom: 10,
             mapTypeId: google.maps.MapTypeId.ROADMAP,
           });
