@@ -122,20 +122,6 @@ const MapView: React.FC<MapViewProps> = ({ addresses, isLoading }) => {
     <div className="card">
       <h3>Route Map</h3>
 
-      {/* Keep the test button */}
-      <button
-        onClick={() => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.setCenter({ lat: 52.52, lng: 13.405 });
-            mapInstanceRef.current.setZoom(10);
-            google.maps.event.trigger(mapInstanceRef.current, "resize");
-          }
-        }}
-        style={{ marginBottom: "10px", padding: "5px 10px" }}
-      >
-        Test: Move to Berlin
-      </button>
-
       <div
         ref={mapRef}
         className="map-container"
