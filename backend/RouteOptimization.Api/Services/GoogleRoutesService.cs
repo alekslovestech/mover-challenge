@@ -114,8 +114,13 @@ public class GoogleRoutesService : IGoogleRoutesService {
         for (int i = 0; i < addresses.Length; i++) {
             for (int j = 0; j < addresses.Length; j++) {
                 if (i != j) {
-                    var pair = await GetDistanceAndDurationAsync(addresses[i], addresses[j]);
-                    pairs.Add(pair);
+                    try {
+                        var pair = await GetDistanceAndDurationAsync(addresses[i], addresses[j]);
+                        pairs.Add(pair);
+                    }
+                    catch (Exception ex) {
+                        Console.WriteLine($"Error getting distance and duration for {addresses[i]} to {addresses[j]}: {ex.Message}");
+                    }
                 }
             }
         }

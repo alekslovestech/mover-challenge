@@ -12,11 +12,21 @@ const api = axios.create({
 
 export const routeApi = {
   optimizeRoute: async (request: RouteRequest): Promise<RouteResponse> => {
-    const response = await api.post<RouteResponse>(
-      "/api/route/optimize",
-      request
-    );
-    return response.data;
+    try {
+      const response = await api.post<RouteResponse>(
+        "/api/route/optimize",
+        request
+      );
+      return response.data;
+    } catch (error: any) {
+      if (
+        error?.response?.status === 400 &&
+        error?.response?.data?.errorMessage
+      ) {
+        throw new Error(error?.response?.data?.errorMessage);
+      }
+      throw error;
+    }
   },
 
   healthCheck: async (): Promise<{ status: string; timestamp: string }> => {
