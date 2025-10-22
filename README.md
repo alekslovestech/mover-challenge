@@ -14,6 +14,7 @@ A fullstack application that optimizes delivery routes using Google Routes API a
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js 16+](https://nodejs.org/)
 - Google Maps API key with Routes API, Maps JavaScript API, and Geocoding API enabled
+- [Yarn](https://yarnpkg.com/) (or use npm as alternative)
 
 ## Quick Start
 

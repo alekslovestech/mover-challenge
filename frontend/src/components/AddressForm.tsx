@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { AddressItem } from "../types";
 
 interface AddressFormProps {
@@ -8,6 +8,8 @@ interface AddressFormProps {
   isLoading: boolean;
   startingPoint: string;
   onStartingPointChange: (value: string) => void;
+  includeEvStation: boolean;
+  onIncludeEvStationChange: (value: boolean) => void;
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({
@@ -17,6 +19,8 @@ const AddressForm: React.FC<AddressFormProps> = ({
   isLoading,
   startingPoint,
   onStartingPointChange,
+  includeEvStation,
+  onIncludeEvStationChange,
 }) => {
   // Use a ref to store the latest addresses to avoid stale closure issues
   const addressesRef = useRef(addresses);
@@ -150,6 +154,25 @@ const AddressForm: React.FC<AddressFormProps> = ({
       >
         {isLoading ? "Optimizing..." : "Optimize Route"}
       </button>
+      <div
+        id="nearest-recharging-station"
+        className="form-group"
+        style={{ marginLeft: "10px" }}
+      >
+        {/*<label style={{ maxWidth: "200px", display: "flex", flexWrap: "wrap" }}>
+          <input
+            type="checkbox"
+            defaultChecked={false}
+            onChange={(e) =>
+              console.log(
+                "Include recharging station clicked",
+                e.target.checked
+              )
+            }
+          />
+          {" Route via nearest recharging station"}
+        </label>*/}
+      </div>
 
       {addresses.length < 2 && (
         <p style={{ color: "#666", fontSize: "14px", marginTop: "10px" }}>

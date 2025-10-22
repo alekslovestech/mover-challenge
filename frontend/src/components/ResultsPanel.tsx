@@ -63,7 +63,6 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
   return (
     <div className="card">
       <h3>Optimized Route</h3>
-
       <div className="route-info">
         <p>
           <strong>Total Distance:</strong> {result.totalDistance.toFixed(2)} km
@@ -73,9 +72,10 @@ const ResultsPanel: React.FC<ResultsPanelProps> = ({
           {formatDuration(result.totalDuration)}
         </p>
       </div>
-
       <div className="route-sequence">
-        <h4>Delivery Sequence:</h4>
+        <b>Delivery Sequence:</b>
+        <br />
+        <br />
         <ol>
           {result.optimizedAddresses.map((address, index) => (
             <li key={index}>
