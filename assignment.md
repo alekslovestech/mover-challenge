@@ -36,7 +36,7 @@ The prototype should support the following functionalities/commands:
 
 1. User Interface:
 
-- Create a simple, user-friendly form for inputting delivery addresses. Ok
+- Create a simple, user-friendly form for inputting delivery addresses.
 - Display the optimized route on a map using Google Maps.
 - Show the total distance and estimated time for the route.
 
