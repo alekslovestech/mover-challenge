@@ -14,6 +14,7 @@ function App() {
   const [startingPoint, setStartingPoint] = useState(
     "Amagerbro Torv, 2300 København, Denmark"
   );
+  const [includeEvStation, setIncludeEvStation] = useState(false); // Add this state
   const [result, setResult] = useState<RouteResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +34,12 @@ function App() {
       }
 
       // Combine starting point and delivery addresses into single array
-      const allAddresses = [startingPoint.trim(), ...validAddresses];
+      let allAddresses = [startingPoint.trim(), ...validAddresses];
+
+      // If EV station is requested, add the hardcoded address
+      if (includeEvStation) {
+        allAddresses.push("Valby Langgade, 2500 København, Denmark");
+      }
 
       const request = {
         addresses: allAddresses,
@@ -84,6 +90,8 @@ function App() {
               isLoading={isLoading}
               startingPoint={startingPoint}
               onStartingPointChange={setStartingPoint}
+              includeEvStation={includeEvStation} // Add this prop
+              onIncludeEvStationChange={setIncludeEvStation} // Add this prop
             />
 
             <div className="card">
@@ -99,18 +107,17 @@ function App() {
           </div>
           <div>
             <ResultsPanel result={result} isLoading={isLoading} error={error} />
+            <MapView
+              addresses={
+                result?.optimizedAddresses || [
+                  startingPoint,
+                  ...addresses.map((a) => a.value),
+                ]
+              }
+              isLoading={isLoading}
+            />
           </div>
         </div>
-
-        <MapView
-          addresses={
-            result?.optimizedAddresses || [
-              startingPoint,
-              ...addresses.map((a) => a.value),
-            ]
-          }
-          isLoading={isLoading}
-        />
       </div>
     </div>
   );
