@@ -8,8 +8,6 @@ interface AddressFormProps {
   isLoading: boolean;
   startingPoint: string;
   onStartingPointChange: (value: string) => void;
-  includeEvStation: boolean;
-  onIncludeEvStationChange: (value: boolean) => void;
 }
 
 const AddressForm: React.FC<AddressFormProps> = ({
@@ -19,8 +17,6 @@ const AddressForm: React.FC<AddressFormProps> = ({
   isLoading,
   startingPoint,
   onStartingPointChange,
-  includeEvStation,
-  onIncludeEvStationChange,
 }) => {
   // Use a ref to store the latest addresses to avoid stale closure issues
   const addressesRef = useRef(addresses);
@@ -69,9 +65,16 @@ const AddressForm: React.FC<AddressFormProps> = ({
               }
             );
 
+            // Only update when user explicitly selects from dropdown
             autocomplete.addListener("place_changed", () => {
               const place = autocomplete.getPlace();
-              if (place?.formatted_address) {
+              // Only update if user selected a complete place with all required fields
+              if (
+                place?.formatted_address &&
+                place.place_id &&
+                place.geometry &&
+                place.geometry.location
+              ) {
                 const address = place.formatted_address;
 
                 // Check if this is the starting point input

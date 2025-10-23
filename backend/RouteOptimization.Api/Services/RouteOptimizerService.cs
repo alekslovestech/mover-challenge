@@ -66,7 +66,10 @@ public class RouteOptimizerService : IRouteOptimizerService {
             // Get distance info from original matrix
             var currentAddress = addresses[currentIndex];
             var nearestAddress = addresses[nearestIndex];
-            var distanceInfo = distanceMatrix.First(p => p.Origin == currentAddress && p.Destination == nearestAddress);
+            var distanceInfo = distanceMatrix.FirstOrDefault(p => p.Origin == currentAddress && p.Destination == nearestAddress);
+            if (distanceInfo == null) {
+                throw new Exception($"Route does not exist between '{currentAddress}' and '{nearestAddress}'");
+            }
 
             optimizedIndices.Add(nearestIndex);
             totalDistance += distanceInfo.Distance;

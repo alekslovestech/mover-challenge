@@ -90,8 +90,6 @@ function App() {
               isLoading={isLoading}
               startingPoint={startingPoint}
               onStartingPointChange={setStartingPoint}
-              includeEvStation={includeEvStation} // Add this prop
-              onIncludeEvStationChange={setIncludeEvStation} // Add this prop
             />
 
             <div className="card">
